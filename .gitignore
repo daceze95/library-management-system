@@ -33,3 +33,6 @@ build/
 .vscode/
 src/main/resources/application.yml
 .DS_Store
+src/main/java/com/dacdigitals/librarymanagementsystem/UUIDExample.java
+entity.md
+LMS.md
