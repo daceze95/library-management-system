@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -26,5 +27,7 @@ public class Book {
     private String yearOfPublication;
     private String description;
     private Boolean available;
+    private LocalDateTime dateCreated;
+    private LocalDateTime updatedAt;
 
 }
