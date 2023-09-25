@@ -23,7 +23,7 @@ public class PersonDTO {
     private String lastName;
     @NotNull(message = "Email field cannot be empty!")
     @Email(message = "Please enter a valid email!")
-    @Pattern(regexp = "\\w+@{1}gmail|yahoo|hotmail.com$")
+    @Pattern(regexp = "\\w+@gmail\\.com|\\w+@yahoo\\.com|\\w+@hotmail\\.com$")
     private String email;
     @NotNull(message = "Please enter a password!")
     @Size(min = 4, max = 12, message = "Password must contain min of 4 or max" +

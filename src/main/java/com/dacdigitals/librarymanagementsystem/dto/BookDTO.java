@@ -3,11 +3,13 @@ package com.dacdigitals.librarymanagementsystem.dto;
 import com.dacdigitals.librarymanagementsystem.entity.constant.GENRE;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor(staticName = "build")
+@AllArgsConstructor
+@Builder
 @NoArgsConstructor
 public class BookDTO {
     @NotNull(message = "title cannot be empty!")

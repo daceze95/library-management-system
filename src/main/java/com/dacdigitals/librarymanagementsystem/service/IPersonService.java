@@ -13,7 +13,7 @@ public interface IPersonService {
 
     Person getPerson(Long id);
 
-    Person updatePerson(PersonDTO person);
+    Person updatePerson(Long id, PersonDTO person);
 
     Person makeAdmin(Long id, RoleDTO setRole);
 

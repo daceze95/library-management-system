@@ -10,6 +10,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(staticName = "build")
 @NoArgsConstructor
 public class RoleDTO {
-    @Pattern(regexp = "ADMIN|USER", message = "Enter a valid input!")
     private ROLE role;
 }

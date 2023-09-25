@@ -23,15 +23,20 @@ public class BookService implements IBookService {
     @Override
     public Book addBook(BookDTO book) {
         UUID uuid = UUID.randomUUID();
+        boolean isAvailable = true;
         LocalDateTime createdDate = LocalDateTime.now();
-        Book bk = Book.build(0,
-                book.getTitle(),
-                book.getAuthor(),
-                uuid,
-                book.getCategory(),
-                book.getYearOfPublication(),
-                book.getDescription(),
-                true, createdDate, createdDate);
+        Book bk = Book.builder()
+                .id(0)
+                .title(book.getTitle())
+                .author(book.getAuthor())
+                .ISBN(uuid)
+                .category(book.getCategory())
+                .yearOfPublication(book.getYearOfPublication())
+                .description(book.getDescription())
+                .available(isAvailable)
+                .dateCreated(createdDate)
+                .updatedAt(createdDate)
+                .build();
         return bookRepository.save(bk);
     }
 
@@ -51,11 +56,18 @@ public class BookService implements IBookService {
         Optional<Book> retrievedBook = bookRepository.findById(book.getId());
         if (retrievedBook.isPresent()) {
             Book book1 = retrievedBook.get();
-            Book updatedBook = Book.build(book1.getId(), book.getTitle(),
-                    book.getAuthor(),
-                    book1.getISBN(), book.getCategory(),
-                    book.getYearOfPublication(), book.getDescription(),
-                    book.getAvailable(), book1.getDateCreated(), updatedAt);
+            Book updatedBook = Book.builder()
+                    .id(book1.getId())
+                    .title(book.getTitle())
+                    .author(book.getAuthor())
+                    .ISBN(book1.getISBN())
+                    .category(book.getCategory())
+                    .yearOfPublication(book.getYearOfPublication())
+                    .description(book.getDescription())
+                    .available(book.getAvailable())
+                    .dateCreated(book1.getDateCreated())
+                    .updatedAt(updatedAt)
+                    .build();
             return bookRepository.save(updatedBook);
         } else {
             throw new NoBookFoundException("Book with id " + book.getId() +
