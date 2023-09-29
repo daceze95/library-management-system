@@ -44,6 +44,7 @@ public class GlobalExceptionHandler extends Exception {
         Msg.put("message", ex.getMessage());
         return Msg;
     }
+
     @ExceptionHandler({NullPointerException.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, String> NoBookFoundException(NullPointerException ex) {
@@ -51,9 +52,26 @@ public class GlobalExceptionHandler extends Exception {
         Msg.put("Error", ex.getMessage());
         return Msg;
     }
+
     @ExceptionHandler({HttpMessageNotReadableException.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, String> NoBookFoundException(HttpMessageNotReadableException ex) {
+        Map<String, String> Msg = new HashMap<>();
+        Msg.put("Error", ex.getMessage());
+        return Msg;
+    }
+
+    @ExceptionHandler({ReservationNotFound.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> NoBookFoundException(ReservationNotFound ex) {
+        Map<String, String> Msg = new HashMap<>();
+        Msg.put("Error", ex.getMessage());
+        return Msg;
+    }
+
+    @ExceptionHandler({BookNotAvailable.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> NoBookFoundException(BookNotAvailable ex) {
         Map<String, String> Msg = new HashMap<>();
         Msg.put("Error", ex.getMessage());
         return Msg;

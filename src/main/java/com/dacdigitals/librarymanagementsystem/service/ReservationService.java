@@ -4,14 +4,16 @@ import com.dacdigitals.librarymanagementsystem.dto.ReservationDTO;
 import com.dacdigitals.librarymanagementsystem.entity.Book;
 import com.dacdigitals.librarymanagementsystem.entity.Person;
 import com.dacdigitals.librarymanagementsystem.entity.Reservation;
-import com.dacdigitals.librarymanagementsystem.exceptionHandler.NoBookFoundException;
-import com.dacdigitals.librarymanagementsystem.exceptionHandler.NoPersonFoundException;
+import com.dacdigitals.librarymanagementsystem.exceptionHandler.BookNotAvailable;
+import com.dacdigitals.librarymanagementsystem.exceptionHandler.ReservationNotFound;
 import com.dacdigitals.librarymanagementsystem.repository.IBookRepository;
 import com.dacdigitals.librarymanagementsystem.repository.IReservationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +30,11 @@ public class ReservationService implements IReservationService {
         Person user = ipersonService.getPerson(reservation.getUserId());
         Book book = iBookService.getBookById(reservation.getBookId());
 
-        if (user != null) {
-            if (book != null && book.getAvailable()) {
+        if (user != null && book != null) {
+            if (book.getAvailable()) {
                 LocalDateTime reserveDate = LocalDateTime.now();
                 LocalDateTime expiryDate = reserveDate.plusDays(7);
-                boolean changeAvailStatus = !book.getAvailable();
+                boolean changeAvailStatus = false;
 
                 Reservation reserved = Reservation.builder()
                         .id(0)
@@ -42,27 +44,47 @@ public class ReservationService implements IReservationService {
                         .expiryDate(expiryDate)
                         .build();
 
-                Book availableStatus = Book.builder()
-                        .id(book.getId())
-                        .title(book.getTitle())
-                        .author(book.getAuthor())
-                        .ISBN(book.getISBN())
-                        .category(book.getCategory())
-                        .yearOfPublication(book.getYearOfPublication())
-                        .description(book.getDescription())
-                        .available(changeAvailStatus)
-                        .dateCreated(book.getDateCreated())
-                        .updatedAt(reserveDate)
-                        .build();
-                iBookRepository.save(availableStatus);
+                //update book status
+                book.setAvailable(changeAvailStatus);
+                book.setUpdatedAt(reserveDate);
+                iBookRepository.save(book);
+
                 return iReservationRepository.save(reserved);
             } else {
-                throw new NoBookFoundException("Book with id " + reservation.getBookId() + " not " +
-                        "found!");
+                Optional<Reservation> res =
+                        iReservationRepository.findAll().stream().filter(rsv -> rsv.getBookId() == reservation.getBookId()).findFirst();
+                if (res.isPresent()) {
+                    Reservation result = res.get();
+                    throw new BookNotAvailable("Book not available! Check " +
+                            "back by " + result.getExpiryDate());
+                }
             }
-        } else {
-            throw new NoPersonFoundException("Person with id number " + reservation.getUserId() +
-                    " not found!");
+
         }
+        return null;
+    }
+
+    @Override
+    public String cancelReservation() {
+        return null;
+    }
+
+    @Override
+    public List<Reservation> getReservationByUserId(Long userId) {
+        Person person = ipersonService.getPerson(userId);
+
+        List<Reservation> reservations =
+                iReservationRepository.findAll().stream().filter(reserved -> reserved.getUserId() == person.getId()).toList();
+        if (!reservations.isEmpty()) {
+            return reservations;
+        } else {
+            throw new ReservationNotFound("No reservation with user id " + userId + " was " + "found!");
+        }
+
+    }
+
+    @Override
+    public List<Reservation> getAllReservation() {
+        return iReservationRepository.findAll();
     }
 }
