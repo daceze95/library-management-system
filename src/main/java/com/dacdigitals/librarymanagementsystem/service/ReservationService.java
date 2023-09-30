@@ -31,10 +31,9 @@ public class ReservationService implements IReservationService {
         Book book = iBookService.getBookById(reservation.getBookId());
 
         if (user != null && book != null) {
-            if (book.getAvailable()) {
+            if (!book.getAvailable()) {
                 LocalDateTime reserveDate = LocalDateTime.now();
                 LocalDateTime expiryDate = reserveDate.plusDays(7);
-                boolean changeAvailStatus = false;
 
                 Reservation reserved = Reservation.builder()
                         .id(0)
@@ -44,20 +43,11 @@ public class ReservationService implements IReservationService {
                         .expiryDate(expiryDate)
                         .build();
 
-                //update book status
-                book.setAvailable(changeAvailStatus);
-                book.setUpdatedAt(reserveDate);
-                iBookRepository.save(book);
-
                 return iReservationRepository.save(reserved);
             } else {
-                Optional<Reservation> res =
-                        iReservationRepository.findAll().stream().filter(rsv -> rsv.getBookId() == reservation.getBookId()).findFirst();
-                if (res.isPresent()) {
-                    Reservation result = res.get();
-                    throw new BookNotAvailable("Book not available! Check " +
-                            "back by " + result.getExpiryDate());
-                }
+                LocalDateTime expiryDate =
+                        getReservationByBookId(reservation.getBookId()).getExpiryDate();
+                throw new BookNotAvailable("Book not available! Check " + "back by " + expiryDate);
             }
 
         }
@@ -65,26 +55,55 @@ public class ReservationService implements IReservationService {
     }
 
     @Override
-    public String cancelReservation() {
-        return null;
+    public String cancelReservation(Long id) {
+        Optional<Reservation> reservation = iReservationRepository.findById(id);
+
+        if (reservation.isPresent()) {
+            Book book = iBookService.getBookById(reservation.get().getBookId());
+            book.setAvailable(true);
+            book.setUpdatedAt(LocalDateTime.now());
+            iBookRepository.save(book);
+            iReservationRepository.delete(reservation.get());
+            return "Reservation cancelled successfully!";
+        } else {
+            throw new ReservationNotFound("No reservation with id " + id + " was " + "found!");
+        }
     }
 
     @Override
-    public List<Reservation> getReservationByUserId(Long userId) {
-        Person person = ipersonService.getPerson(userId);
-
-        List<Reservation> reservations =
-                iReservationRepository.findAll().stream().filter(reserved -> reserved.getUserId() == person.getId()).toList();
-        if (!reservations.isEmpty()) {
-            return reservations;
+    public Reservation getReservationByUserId(Long userId) {
+        Reservation reservation = iReservationRepository.findByUserId(userId);
+        if (reservation != null) {
+            return reservation;
         } else {
             throw new ReservationNotFound("No reservation with user id " + userId + " was " + "found!");
         }
-
     }
 
     @Override
     public List<Reservation> getAllReservation() {
         return iReservationRepository.findAll();
+    }
+
+    @Override
+    public Reservation getReservationByRservId(Long reservationId) {
+
+        Optional<Reservation> reservations =
+                iReservationRepository.findById(reservationId);
+        if (reservations.isPresent()) {
+            return reservations.get();
+        } else {
+            throw new ReservationNotFound("No reservation with id " + reservationId + " was " + "found!");
+        }
+    }
+
+    @Override
+    public Reservation getReservationByBookId(Long bookId) {
+        Reservation reservation = iReservationRepository.findByBookId(bookId);
+        if (reservation != null) {
+            return reservation;
+        } else {
+            throw new ReservationNotFound("No reservation with book id " + bookId + " was " + "found!");
+        }
     }
 }
