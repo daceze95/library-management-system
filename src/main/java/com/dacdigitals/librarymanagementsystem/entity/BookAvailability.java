@@ -1,6 +1,5 @@
 package com.dacdigitals.librarymanagementsystem.entity;
 
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,18 +11,20 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@Entity
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class Reservation {
+@Entity
+public class BookAvailability {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private long id;
-    private long bookId;
-    private long userId;
+    private Long id;
+    private Long bookId;
+    private Long userId;
+    private Long bookReserveId;
     private boolean isReserved;
-    private LocalDateTime reserveDate;
-    private LocalDateTime expiryDate;
+    private LocalDateTime setTime;
+    private LocalDateTime updatedAt;
+
 }

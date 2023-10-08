@@ -1,11 +1,15 @@
+/**
+ * Reservation service not working as intended
+ */
+
 package com.dacdigitals.librarymanagementsystem.service;
 
 import com.dacdigitals.librarymanagementsystem.dto.ReservationDTO;
-import com.dacdigitals.librarymanagementsystem.entity.Book;
-import com.dacdigitals.librarymanagementsystem.entity.Person;
-import com.dacdigitals.librarymanagementsystem.entity.Reservation;
+import com.dacdigitals.librarymanagementsystem.entity.*;
+import com.dacdigitals.librarymanagementsystem.entity.constant.TYPE;
 import com.dacdigitals.librarymanagementsystem.exceptionHandler.BookNotAvailable;
 import com.dacdigitals.librarymanagementsystem.exceptionHandler.ReservationNotFound;
+import com.dacdigitals.librarymanagementsystem.repository.IBookAvailabilityRepository;
 import com.dacdigitals.librarymanagementsystem.repository.IBookRepository;
 import com.dacdigitals.librarymanagementsystem.repository.IReservationRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,52 +27,59 @@ public class ReservationService implements IReservationService {
     private final IBookService iBookService;
     private final IReservationRepository iReservationRepository;
     private final IBookRepository iBookRepository;
+    private final ITransactionService iTransactionService;
+    private final IBookAvailabilityRepository bookAvailabilityRepository;
 
     @Override
     public Reservation makeReservation(ReservationDTO reservation) {
 
         Person user = ipersonService.getPerson(reservation.getUserId());
         Book book = iBookService.getBookById(reservation.getBookId());
+        Transaction borrowedBook;
 
         if (user != null && book != null) {
-            if (!book.getAvailable()) {
-                LocalDateTime reserveDate = LocalDateTime.now();
-                LocalDateTime expiryDate = reserveDate.plusDays(7);
+            Optional<Transaction> transaction =
+                    iTransactionService.getAllTransaction().stream().filter(trxn -> trxn.getBookId() == book.getId() && trxn.getType() == TYPE.BORROW).distinct().findFirst();
 
-                Reservation reserved = Reservation.builder()
-                        .id(0)
-                        .userId(user.getId())
-                        .bookId(book.getId())
-                        .reserveDate(reserveDate)
-                        .expiryDate(expiryDate)
-                        .build();
+            if (transaction.isPresent()) {
+                borrowedBook = transaction.get();
+                //book shouldn't be available and not reserved
+                if (!book.getAvailable() && !getReservationByBookId(book.getId()).isReserved()) {
+                    LocalDateTime reserveDate = LocalDateTime.now();
+                    LocalDateTime expiryDate =
+                            borrowedBook.getDueDate().plusHours(1);
 
-                return iReservationRepository.save(reserved);
-            } else {
-                LocalDateTime expiryDate =
-                        getReservationByBookId(reservation.getBookId()).getExpiryDate();
-                throw new BookNotAvailable("Book not available! Check " + "back by " + expiryDate);
+                    Reservation reserved = Reservation.builder()
+                            .id(0)
+                            .userId(user.getId())
+                            .bookId(book.getId())
+                            .isReserved(true)
+                            .reserveDate(reserveDate)
+                            .expiryDate(expiryDate)
+                            .build();
+
+                    BookAvailability setBookAvailability =
+                            BookAvailability.builder()
+                                    .id(0L)
+                                    .userId(reserved.getUserId())
+                                    .bookId(reserved.getBookId())
+                                    .bookReserveId(reserved.getId())
+                                    .isReserved(reserved.isReserved())
+                                    .setTime(reserveDate)
+                                    .updatedAt(reserveDate)
+                                    .build();
+                    bookAvailabilityRepository.save(setBookAvailability);
+
+                    return iReservationRepository.save(reserved);
+                } else {
+                    throw new BookNotAvailable("Book not available! Check " + "back by " + borrowedBook.getDueDate());
+                }
             }
 
         }
         return null;
     }
 
-    @Override
-    public String cancelReservation(Long id) {
-        Optional<Reservation> reservation = iReservationRepository.findById(id);
-
-        if (reservation.isPresent()) {
-            Book book = iBookService.getBookById(reservation.get().getBookId());
-            book.setAvailable(true);
-            book.setUpdatedAt(LocalDateTime.now());
-            iBookRepository.save(book);
-            iReservationRepository.delete(reservation.get());
-            return "Reservation cancelled successfully!";
-        } else {
-            throw new ReservationNotFound("No reservation with id " + id + " was " + "found!");
-        }
-    }
 
     @Override
     public Reservation getReservationByUserId(Long userId) {
@@ -99,11 +110,68 @@ public class ReservationService implements IReservationService {
 
     @Override
     public Reservation getReservationByBookId(Long bookId) {
-        Reservation reservation = iReservationRepository.findByBookId(bookId);
+        Reservation reservation =
+                iReservationRepository.findByBookId(bookId);
         if (reservation != null) {
             return reservation;
         } else {
-            throw new ReservationNotFound("No reservation with book id " + bookId + " was " + "found!");
+            throw new ReservationNotFound("No reservation with book id " + bookId + " was " + "found! You can proceed to borrow the book.");
         }
     }
+
+    @Override
+    public String cancelReservation(Long id) {
+        Reservation reservation = getReservationByRservId(id);
+
+        if (reservation != null) {
+            Optional<BookAvailability> bookAvailability =
+                    bookAvailabilityRepository.findById(reservation.getId());
+            if (bookAvailability.isPresent() && bookAvailability.get().isReserved()) {
+
+                Book book = iBookService.getBookById(reservation.getBookId());
+                book.setAvailable(true);
+                book.setUpdatedAt(LocalDateTime.now());
+                iBookRepository.save(book);
+                reservation.setReserved(false);
+                reservation.setExpiryDate(LocalDateTime.now());
+
+                BookAvailability setBookAvailability =
+                        BookAvailability.builder()
+                                .id(bookAvailability.get().getId())
+                                .userId(bookAvailability.get().getUserId())
+                                .bookId(bookAvailability.get().getBookId())
+                                .bookReserveId(reservation.getId())
+                                .isReserved(false)
+                                .setTime(bookAvailability.get().getSetTime())
+                                .updatedAt(LocalDateTime.now())
+                                .build();
+                bookAvailabilityRepository.save(setBookAvailability);
+
+
+                iReservationRepository.save(reservation);
+                return "Reservation cancelled successfully!";
+            } else {
+                throw new BookNotAvailable("Book either not present or book " +
+                        "isn't reserved!");
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public String deleteReservation(Long id) {
+        Optional<Reservation> reservation = iReservationRepository.findById(id);
+
+        if (reservation.isPresent()) {
+            Book book = iBookService.getBookById(reservation.get().getBookId());
+            book.setAvailable(true);
+            book.setUpdatedAt(LocalDateTime.now());
+            iBookRepository.save(book);
+            iReservationRepository.delete(reservation.get());
+            return "Reservation deleted successfully!";
+        } else {
+            throw new ReservationNotFound("No reservation with id " + id + " was " + "found!");
+        }
+    }
+
 }

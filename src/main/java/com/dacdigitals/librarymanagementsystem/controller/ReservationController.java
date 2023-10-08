@@ -64,9 +64,16 @@ public class ReservationController {
                 HttpStatus.OK);
     }
 
-    @DeleteMapping("/cancel/{id}")
+    @PostMapping("/cancel/{id}")
     public CustomApiResponse<Object> cancelReservation(@PathVariable Long id) {
         String res = reservationService.cancelReservation(id);
-        return new CustomApiResponse<>("", res, HttpStatus.OK);
+        return new CustomApiResponse<>("cancelled", res, HttpStatus.OK);
     }
+
+    @DeleteMapping("/delete/{id}")
+    public CustomApiResponse<Object> deleteReservation(@PathVariable Long id) {
+        String res = reservationService.deleteReservation(id);
+        return new CustomApiResponse<>("deleted!", res, HttpStatus.OK);
+    }
+
 }

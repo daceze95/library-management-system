@@ -1,18 +1,20 @@
+/**
+ *  Transaction service not working as intended
+ *  fix borrow book exception expiry time
+ */
+
 package com.dacdigitals.librarymanagementsystem.service;
 
 import com.dacdigitals.librarymanagementsystem.dto.TransactionDTO;
-import com.dacdigitals.librarymanagementsystem.entity.Book;
-import com.dacdigitals.librarymanagementsystem.entity.Person;
-import com.dacdigitals.librarymanagementsystem.entity.Reservation;
-import com.dacdigitals.librarymanagementsystem.entity.Transaction;
+import com.dacdigitals.librarymanagementsystem.entity.*;
 import com.dacdigitals.librarymanagementsystem.entity.constant.TYPE;
 import com.dacdigitals.librarymanagementsystem.exceptionHandler.BookNotAvailable;
 import com.dacdigitals.librarymanagementsystem.exceptionHandler.ReservationNotFound;
+import com.dacdigitals.librarymanagementsystem.repository.IBookAvailabilityRepository;
 import com.dacdigitals.librarymanagementsystem.repository.IBookRepository;
 import com.dacdigitals.librarymanagementsystem.repository.ITransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,14 +27,21 @@ public class TransactionService implements ITransactionService {
     private final IPersonService personService;
     private final ITransactionRepository transactionRepository;
     private final IBookRepository iBookRepository;
+    private final IBookAvailabilityRepository bookAvailabilityRepository;
 
 
     @Override
     public Transaction borrowBook(TransactionDTO transaction) {
         Book book = bookService.getBookById(transaction.getBookId());
         Person person = personService.getPerson(transaction.getUserId());
+
         if (book != null && person != null) {
-            if (book.getAvailable()) {
+//            To borrow, book must be available and reserved period is expired
+//            or not reserved
+            List<BookAvailability> bAStatus =
+                    bookAvailabilityRepository.findAll().stream().filter(ba -> ba.getBookId() == book.getId() && ba.isReserved()).toList();
+
+            if (book.getAvailable() && bAStatus.isEmpty()) {
                 LocalDateTime trxnDate = LocalDateTime.now();
                 LocalDateTime dueDate = trxnDate.plusDays(7);
                 boolean changeAvailStatus = false;
@@ -54,9 +63,9 @@ public class TransactionService implements ITransactionService {
 
                 return transactionRepository.save(bookBorrowed);
             } else {
-                LocalDateTime expiryDate =
-                        getTransactionByBookId(transaction.getBookId()).getDueDate();
-                throw new BookNotAvailable("Book not available! Check " + "back by " + expiryDate);
+                //Book is reserved, and the reservation is still valid
+//                LocalDateTime expiryDate = reserve.getExpiryDate();
+                throw new BookNotAvailable("Book is reserved until " );
             }
         }
         return null;
@@ -81,6 +90,13 @@ public class TransactionService implements ITransactionService {
                         .dueDate(transaction.getDueDate())
                         .returnDate(trxnDate)
                         .build();
+
+// After return, book status should be true if and only if that book isn't
+// reserved else false
+                book.setAvailable(true);
+                book.setUpdatedAt(LocalDateTime.now());
+                iBookRepository.save(book);
+
                 return transactionRepository.save(bookReturned);
             } else {
                 throw new BookNotAvailable("Sorry, no book to return at the " +

@@ -17,4 +17,6 @@ public interface IReservationService {
     Reservation getReservationByRservId(Long id);
 
     Reservation getReservationByBookId(Long bookId);
+
+    String deleteReservation(Long id);
 }

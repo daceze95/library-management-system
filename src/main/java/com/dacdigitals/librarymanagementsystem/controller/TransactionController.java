@@ -45,6 +45,7 @@ public class TransactionController {
         return new CustomApiResponse<>("retrieved successfully!", response,
                 HttpStatus.OK);
     }
+
     @GetMapping
     public CustomApiResponse<Object> getAllTransaction() {
         List<Transaction> res = transactionService.getAllTransaction();
